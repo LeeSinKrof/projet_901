@@ -6,10 +6,10 @@ from Com import Com
 
 class Process(Thread):
     
-    def __init__(self, name):
+    def __init__(self, name, nbProcess):
         Thread.__init__(self)
 
-        self.com = Com()
+        self.com = Com(nbProcess)
         
         self.nbProcess = self.com.getNbProcess()
 
