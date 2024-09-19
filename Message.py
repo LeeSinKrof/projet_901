@@ -2,24 +2,28 @@ from abc import ABC
 from enum import Enum
 
 class Message(ABC):
-    def __init__(self, sender, message, receiver):
+    def __init__(self, sender=None, message=None, receiver=None, stamp=None):
         self.sender_id = sender
         self.message = message
         self.receiver = receiver
-        self.clock = None
+        self.stamp = stamp
 
 
-class sendMessageTo(Message):
-    def __init__(self, sender, message, receiver):
-        super().__init__(sender, message, receiver)
+class BroadcastMessage(Message):
+    def __init__(self, sender, message, stamp=None):
+        super().__init__(sender=sender, message=message, stamp=stamp)
 
-class broadcastMessage(Message):
-    def __init__(self, sender, message):
-        super().__init__(sender, message)
 
-class tokenMessage(Message):
-    def __init__(self, sender):
-        super().__init__(sender, "Ceci est un Token")
+class MessageTo(Message):
+    def __init__(self, sender, message, receiver, stamp=None):
+        super().__init__(sender=sender, message=message, receiver=receiver, stamp=stamp)
+
+
+class TokenMessage(Message):
+    def __init__(self, sender=None, receiver=None, stamp=None):
+        super().__init__(sender=sender, receiver=receiver, message="Ceci est un TOKEN", stamp=stamp)
+        self.nb_sync = 0
+
 
 class State(Enum):
     NONE = None
@@ -27,6 +31,7 @@ class State(Enum):
     SC = "SC"
     RELEASE = "RELEASE"
 
-class syncMessage(Message):
-    def __init__(self, sender):
-        super().__init__(sender)
+
+class SyncMessage(Message):
+    def __init__(self, sender, stamp=None):
+        super().__init__(sender=sender, message="SYNC", stamp=stamp)

@@ -5,13 +5,12 @@ from Message import *
 
 from pyeventbus3.pyeventbus3 import *
 
-class Com:
-    nbProcessCreated = 0
-    def __init__(self, process):
-        self.clock = 0
+class Com(Thread):
+    def __init__(self, process, clock):
+        Thread.__init__(self)
+        self.clock = clock
         self.process = process
-        self.myId = Com.nbProcessCreated
-        Com.nbProcessCreated += 1
+        self.myId = process.myId
         self.mailbox = []
         self.sem = Semaphore()
 
@@ -20,13 +19,14 @@ class Com:
         self.clock += 1
         self.sem.release()
 
+
     def add_message_in_mailbox(self, message):
         self.mailbox.append(message)
 
     def getMyId(self):
         return self.myId
 
-    @subscribe(threadMode=Mode.PARALLEL, onEvent=sendMessageTo)
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageTo)
     def on_receive(self, event):
         if event.receiver == self.getMyId():
             if event.stamp > self.clock:
@@ -38,10 +38,10 @@ class Com:
 
     def send_to(self, msg, to):
         self.inc_clock()
-        message = sendMessageTo(self.myId, msg, to, self.clock)
+        message = MessageTo(self.myId, msg, to, self.clock)
         PyBus.Instance().post(message)
 
-    @subscribe(threadMode=Mode.PARALLEL, onEvent=broadcastMessage)
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastMessage)
     def on_broadcast(self, event):
         if event.sender != self.myId:
             if event.clock > self.clock:
@@ -54,8 +54,19 @@ class Com:
 
     def broadcast(self, msg):
         self.inc_clock()
-        message = broadcastMessage(self.myId, msg, self.clock)
+        message = BroadcastMessage(self.myId, msg, self.clock)
         PyBus.Instance().post(message)
+        print(f"{self.myId} broadcasted message: {msg}")
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=TokenMessage)
+    def on_token(self, event):
+        if event.receiver == self.myId and self.process.alive:
+            if self.process.state == State.REQUEST:
+                self.process.state = State.SC
+                print(f"{self.myId} has the token")
+                
+
+
 
 
 
