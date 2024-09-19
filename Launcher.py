@@ -1,7 +1,3 @@
-## pas de variables globales
-##  un thread nest pas serializable
-## serialisation = mettre sous forme de tableau d'octets
-
 from time import sleep
 from Process import Process
 
@@ -9,15 +5,13 @@ def launch(nbProcess, runningTime=5):
     processes = []
 
     for i in range(nbProcess):
-        processes = processes + [Process("P"+str(i), nbProcess)]
+        processes.append(Process("P"+str(i), nbProcess))
 
     sleep(runningTime)
 
     for p in processes:
         p.stop()
 
-    for p in processes:
-        p.waitStopped()
 
 if __name__ == '__main__':
 
