@@ -1,7 +1,7 @@
 from threading import Thread
 from time import sleep
 from Com import Com
-import random
+
 
 class Process(Thread):
 
@@ -19,37 +19,63 @@ class Process(Thread):
 
     def run(self):
         loop = 0
-
         while self.alive:
             print(self.getName() + " Loop: " + str(loop))
+            sleep(1)
 
-            action = random.choice(["send_message", "broadcast", "request_sc", "sync"])
+            if self.getName() == "P0":
+                self.com.send_to("j'appelle 2 et je te recontacte après", 1)
 
-            if action == "send_message":
-                receiver = random.randint(0, self.nbProcess - 1)
-                message = f"Message from {self.getName()} to Process {receiver}"
-                self.com.send_to(message, receiver)
+                self.com.send_to_sync(
+                    "J'ai laissé un message à 2, je le rappellerai après, on se sychronise tous et on attaque la partie ?",
+                    2)
+                self.com.receive_from_sync()
 
-            elif action == "broadcast":
-                message = f"Broadcast message from {self.getName()}"
-                self.com.broadcast(message)
+                self.com.send_to_sync("2 est OK pour jouer, on se synchronise et c'est parti!", 1)
 
-            elif action == "request_sc":
-                print(self.getName() + " requesting critical section")
-                self.com.request_sc()
-                print(self.getName() + " entering critical section")
-                sleep(2)
-                print(self.getName() + " releasing critical section")
-                self.com.release_sc()
-
-            elif action == "sync":
-                print(self.getName() + " attempting to synchronize with other processes")
                 self.com.synchronize()
 
-            sleep(random.uniform(0.5, 2))
+                self.com.request_sc()
+                if self.com.mailbox_is_empty():
+                    print("Catched !")
+                    self.com.broadcast("J'ai gagné !!!")
+                else:
+                    msg = self.com.get_from_mailbox()
+                    print(str(msg.getSender()) + " à eu le jeton en premier")
+                self.com.release_sc()
+
+            if self.getName() == "P1":
+                if not self.com.mailbox_is_empty():
+                    self.com.get_from_mailbox()
+                    self.com.receive_from_sync()
+
+                    self.com.synchronize()
+
+                    self.com.request_sc()
+                    if self.com.mailbox_is_empty():
+                        print("Catched !")
+                        self.com.broadcast("J'ai gagné !!!")
+                    else:
+                        msg = self.com.get_from_mailbox()
+                        print(str(msg.getSender()) + " à eu le jeton en premier")
+                    self.com.release_sc()
+
+            if self.getName() == "P2":
+                self.com.receive_from_sync()
+                self.com.send_to_sync("OK", 0)
+
+                self.com.synchronize()
+
+                self.com.request_sc()
+                if self.com.mailbox_is_empty():
+                    print("Catched !")
+                    self.com.broadcast("J'ai gagné !!!")
+                else:
+                    msg = self.com.get_from_mailbox()
+                    print(str(msg.getSender()) + " à eu le jeton en premier")
+                self.com.release_sc()
 
             loop += 1
-
         print(self.getName() + " stopped")
 
     def stop(self):

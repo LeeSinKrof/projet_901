@@ -33,19 +33,30 @@ class Com:
     def get_name(self):
         return self.name
 
+    def add_to_mailbox(self, message):
+        with self.lock:
+            self.mailbox.append(message)
+
+    def get_from_mailbox(self):
+        with self.lock:
+            if self.mailbox:
+                return self.mailbox.pop(0)
+            return None
+
+    def mailbox_is_empty(self):
+        with self.lock:
+            return len(self.mailbox) == 0
+
     def inc_clock(self):
         with self.lock:
             self.clock += 1
 
-    def inc_clock_receive(self, stamp):
-        with self.lock:
-            self.clock = max(self.clock, stamp) + 1
-
     @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageTo)
     def on_receive(self, event):
         if event.get_receiver() == self.myId:
-            self.inc_clock_receive(event.get_stamp())
-            self.mailbox.append(event)
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
+            self.add_to_mailbox(event)
             print(self.get_name() + ' received message: ' + str(event.get_message()) + " Clock: " + str(self.clock))
 
     def send_to(self, message, receiver):
@@ -57,8 +68,9 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastMessage)
     def on_broadcast(self, event):
         if event.get_sender() != self.myId:
-            self.inc_clock_receive(event.get_stamp())
-            self.mailbox.append(event)
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
+            self.add_to_mailbox(event)
             print(self.get_name() + ' received broadcast: ' + str(event.get_message()) + " Clock: " + str(self.clock))
 
     def broadcast(self, message):
@@ -95,7 +107,8 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=SynchronizationMessage)
     def on_sync(self, event):
         if event.get_sender() != self.myId:
-            self.inc_clock_receive(event.get_stamp())
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
             self.cpt_synchro -= 1
 
     def synchronize(self):
@@ -111,8 +124,9 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastMessageSync)
     def on_broadcast_sync(self, event):
         if event.get_sender() != self.myId:
-            self.inc_clock_receive(event.get_stamp())
-            self.mailbox.append(event)
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
+            self.add_to_mailbox(event)
             self.message_received = True
 
     def broadcast_sync(self, message, sender):
@@ -130,14 +144,15 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageToSync)
     def receive_message_sync(self, event):
         if event.get_sender() == self.myId:
-            self.inc_clock_receive(event.get_stamp())
-            self.mailbox.append(event)
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
+            self.add_to_mailbox(event)
             self.message_received = True
 
     def receive_from_sync(self):
         while not self.message_received:
             sleep(1)
-        final_msg = self.mailbox.pop()
+        final_msg = self.get_from_mailbox()
         msg = MessageToSync("", final_msg.get_sender(), self.clock)
         PyBus.Instance().post(msg)
         self.message_received = False
@@ -145,8 +160,9 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=ReceivedMessageSync)
     def receive_message_sync_reply(self, event):
         if event.get_receiver() == self.myId:
-            self.inc_clock_receive(event.get_stamp())
-            self.mailbox.append(event)
+            with self.lock:
+                self.clock = max(self.clock, event.get_stamp()) + 1
+            self.add_to_mailbox(event)
             self.message_received = True
 
     def send_to_sync(self, message, receiver):

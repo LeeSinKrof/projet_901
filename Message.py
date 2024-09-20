@@ -55,8 +55,8 @@ class BroadcastMessageSync(Message):
 
 
 class MessageToSync(Message):
-    def __init__(self, sender, message, receiver, stamp):
-        super().__init__(sender=sender, message=message, receiver=receiver, stamp=stamp)
+    def __init__(self, message, receiver, stamp):
+        super().__init__(sender=None, message=message, receiver=receiver, stamp=stamp)
 
 
 class ReceivedMessageSync(Message):
