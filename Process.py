@@ -1,47 +1,55 @@
 from threading import Thread
 from time import sleep
 from Com import Com
+import random
 
 class Process(Thread):
 
     def __init__(self, name, nbProcess):
         Thread.__init__(self)
 
-        self.com = Com(name, nbProcess, self)
+        self.com = Com(nbProcess)
 
         self.nbProcess = nbProcess
-        self.myId = self.com.getMyId()
+        self.myId = self.com.get_my_id()
         self.setName(name)
-        self.state = None
-        self.cpt_sync = 0
 
         self.alive = True
         self.start()
 
     def run(self):
         loop = 0
+
         while self.alive:
-            print(f"{self.getName()} Loop: {loop}, Lamport Clock: {self.com.clock}")
-            sleep(1)
+            print(self.getName() + " Loop: " + str(loop))
 
-            if self.getName() == "P0":
-                print(f"{self.getName()} Envoi de message à P1")
-                self.com.send_to("Message de P0 à P1", 1)
-                print(f"{self.getName()} Synchronisation avec P2")
-                self.com.send_to_sync("P0 se synchronise avec P2", 2)
-                self.com.synchronize()
+            action = random.choice(["send_message", "broadcast", "request_sc", "sync"])
 
+            if action == "send_message":
+                receiver = random.randint(0, self.nbProcess - 1)
+                message = f"Message from {self.getName()} to Process {receiver}"
+                self.com.send_to(message, receiver)
+
+            elif action == "broadcast":
+                message = f"Broadcast message from {self.getName()}"
+                self.com.broadcast(message)
+
+            elif action == "request_sc":
+                print(self.getName() + " requesting critical section")
                 self.com.request_sc()
-                with self.com.lock:
-                    if len(self.com.mailbox) == 0:
-                        print(f"{self.getName()} a gagné la section critique!")
-                        self.com.broadcast("J'ai gagné!!!")
-                    else:
-                        msg = self.com.mailbox.pop(0)
-                        print(f"{msg.sender_id} a eu le jeton en premier")
+                print(self.getName() + " entering critical section")
+                sleep(2)
+                print(self.getName() + " releasing critical section")
                 self.com.release_sc()
 
+            elif action == "sync":
+                print(self.getName() + " attempting to synchronize with other processes")
+                self.com.synchronize()
+
+            sleep(random.uniform(0.5, 2))
+
             loop += 1
+
         print(self.getName() + " stopped")
 
     def stop(self):
