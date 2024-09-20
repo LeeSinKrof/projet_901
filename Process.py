@@ -11,7 +11,6 @@ class Process(Thread):
         com (Com): The communication object for the process.
         nbProcess (int): The total number of processes.
         myId (int): The ID of the current process.
-        alive (bool): A flag to indicate if the process is running.
     """
 
     def __init__(self, name, nbProcess):
@@ -26,8 +25,7 @@ class Process(Thread):
         self.com = Com(nbProcess)
         self.nbProcess = nbProcess
         self.myId = self.com.get_my_id()
-        self.setName(name)
-        self.alive = True
+        self.name = name
         self.start()
 
     def run(self):
@@ -35,11 +33,11 @@ class Process(Thread):
         The main loop of the process. Executes the process logic.
         """
         loop = 0
-        while self.alive:
-            print(self.getName() + " Loop: " + str(loop))
+        while self.com.alive:
+            print(self.com.get_name() + " Loop: " + str(loop))
             sleep(1)
 
-            if self.getName() == "P0":
+            if self.com.get_name() == "P0":
                 self.com.send_to("j'appelle 2 et je te recontacte après", 1)
                 self.com.send_to_sync(
                     "J'ai laissé un message à 2, je le rappellerai après, on se sychronise tous et on attaque la partie ?",
@@ -56,10 +54,10 @@ class Process(Thread):
                     print(str(msg.get_sender()) + " a eu le jeton en premier")
                 self.com.release_sc()
 
-            if self.getName() == "P1":
+            if self.com.get_name() == "P1":
                 while not self.com.mailbox_is_empty():
                     msg = self.com.get_from_mailbox()
-                    print(f"{self.getName()} received: {msg.get_message()} from {msg.get_sender()}")
+                    print(f"{self.com.get_name()} received: {msg.get_message()} from {msg.get_sender()}")
                     self.com.receive_from_sync()
                 self.com.synchronize()
                 self.com.request_sc()
@@ -71,7 +69,7 @@ class Process(Thread):
                     print(str(msg.get_sender()) + " a eu le jeton en premier")
                 self.com.release_sc()
 
-            if self.getName() == "P2":
+            if self.com.get_name() == "P2":
                 self.com.receive_from_sync()
                 self.com.send_to_sync("OK", 0)
                 self.com.synchronize()
@@ -85,11 +83,11 @@ class Process(Thread):
                 self.com.release_sc()
 
             loop += 1
-        print(self.getName() + " stopped")
+        print(self.com.get_name() + " stopped")
 
     def stop(self):
         """
         Stop the process.
         """
-        self.alive = False
+        self.com.alive = False
         self.join()

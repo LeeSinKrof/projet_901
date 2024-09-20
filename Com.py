@@ -4,12 +4,26 @@ from Message import *
 from threading import Lock
 
 
+class IDManager:
+    """
+    A class to manage the IDs of the processes.
+
+    Attributes:
+        current_id (int): The current ID to assign to a process.
+    """
+    current_id = 0
+
+    @staticmethod
+    def get_new_id():
+        new_id = IDManager.current_id
+        IDManager.current_id += 1
+        return new_id
+
+
 class Com:
     """
     A class to represent a communication process in a distributed system.
     """
-
-    nbProcessCreated = 0
 
     def __init__(self, nb_process):
         """
@@ -18,10 +32,9 @@ class Com:
         Args:
             nb_process (int): The total number of processes.
         """
-        self.myId = Com.nbProcessCreated
+        self.myId = IDManager.get_new_id()
         self.nbProcess = nb_process
         self.name = f"P{self.myId}"
-        Com.nbProcessCreated += 1
 
         PyBus.Instance().register(self, self)
 
@@ -31,6 +44,10 @@ class Com:
         self.mailbox = []
         self.message_received = False
         self.lock = Lock()
+        self.alive = True
+
+        if self.get_my_id() == self.nbProcess - 1:
+            self.send_token()
 
     @staticmethod
     def get_nb_process():
@@ -40,7 +57,7 @@ class Com:
         Returns:
             int: The number of processes created.
         """
-        return Com.nbProcessCreated
+        return IDManager.current_id
 
     def get_my_id(self):
         """
@@ -69,6 +86,7 @@ class Com:
         """
         with self.lock:
             self.mailbox.append(message)
+            print(f"{self.get_name()} added message to mailbox: {message.get_message()}")
 
     def get_from_mailbox(self):
         """
@@ -195,11 +213,14 @@ class Com:
         self.inc_clock()
         PyBus.Instance().post(SynchronizationMessage(self.myId, self.clock))
         print(f"{self.get_name()} waiting for synchronization")
-        while self.cpt_synchro > 1:
+        while self.cpt_synchro > 0:
             print(f"{self.get_name()} is waiting for {self.cpt_synchro} processes")
-            sleep(1)
-        print(f"{self.get_name()} is synchronized")
+            sleep(0.1)
+            if not self.alive:
+                return
+        print(f"{self.get_name()} is synchronized with all processes.")
         self.cpt_synchro = self.nbProcess
+
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=SynchronizationMessage)
     def on_sync(self, event):
