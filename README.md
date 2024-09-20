@@ -1,2 +1,2 @@
-# Projet_901
- projet of Info901
+# Projet_901 - CEYLAN Emre
+ Algorithme distribués
